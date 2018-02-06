@@ -13,6 +13,9 @@ import matplotlib.pyplot as plt
 #     '''This might find the pupil given the mask'''
 
 def getdistanceNumpy(center, size):
+    '''this function uses numpy to generate a matrix whose values are distances
+    from the center of the proposed circle. the values of this circle are then
+    taken out along witht he indices and put into a min heap'''
     x = np.arange(size[1])
     y = np.transpose(np.arange(size[0]))
     z = (x-center[0])**2 + (y[:, np.newaxis]-center[1])**2
@@ -21,8 +24,11 @@ def getdistanceNumpy(center, size):
     return values
 
 def getNextBand(width, radius, heap):
+    '''this function will return an appropriate amount of correct pixels given the
+    current radius of a circle and the width of pixels to examine from there.
+    It just pops from the heap created above'''
     numBoxes = round(np.pi * ((2* radius * width) + width**2))
-    print(numBoxes)
+    # print(numBoxes)
     return [heapq.heappop(heap) for i in range(int(numBoxes))]
 
 # values = getdistanceNumpy((100,100),(240,480))
@@ -32,6 +38,9 @@ width = 3
 
 
 def displayImg(filename):
+    '''mainloop ive used for testing the expansion technique. This uses a
+    combinations of bluirring, erosion, a mask, and gradient to get a likely
+    pupil out of an image'''
     history = []
 
     img = cv2.imread('../EyePictures/' + filename,0)
@@ -65,7 +74,7 @@ def displayImg(filename):
         #
         # cv2.imshow('detected circles',img)
         # cv2.waitKey(0)
-    plt.plot(history)
+    plt.plot(history)#this will plot the average pixel value with each expansion
     history = []
     plt.show()
     cv2.imshow('detected circles',img)
