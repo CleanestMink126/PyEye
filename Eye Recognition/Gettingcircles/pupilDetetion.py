@@ -109,6 +109,8 @@ def getBaseline(filename, cutoff= 2):
 # def changeValue(img, ):
 
 def examineBaselinePlot(filename):
+    '''this will plot the average pixel value as the radius expands from the
+    center of the pupil'''
     highestBand,radius, pupilRad, values, img, center = getBaseline(filename)
     mean = np.mean(highestBand)
     std = np.std(highestBand)
@@ -124,6 +126,9 @@ def examineBaselinePlot(filename):
     plt.show()
 
 def examineBaseline(filename):
+    '''This will use getbaseline to approximate the standard deviation and mean
+    of the pixel values of the eye. Then it will change each point in a certain
+    radius to a value approximating how far away from the iris mean'''
     highestBand,radius, pupilRad, values, img, center = getBaseline(filename)
     mean = np.mean(highestBand)
     std = np.std(highestBand)
@@ -147,6 +152,10 @@ def examineBaseline(filename):
 
 
 def walkOneSide(direction, radius, img,center,historySize = 10,incrementSTD = 10, cutoff = 2.5):
+    '''After getting the baseline a.k.a. the brightest part of the iris, this method
+    will walk outwards horizontally toward the sclera, comparing the values before
+     current point with the current point. When the next point is above a certain
+     standard deviation away it will return the radius'''
     history = []#this really should be a LL or QUEUE but makes np.mean hard
     edge = center[0]+direction*radius
     for i in range(historySize):
@@ -170,6 +179,10 @@ def walkOneSide(direction, radius, img,center,historySize = 10,incrementSTD = 10
         historyMean += diff / historySize
 
 def walkOneSideBetter(direction, radius, img,center,historySize = 10,incrementSTD = 1, cutoff = 0.5):
+    '''After getting the baseline a.k.a. the brightest part of the iris, this method
+    will walk outwards horizontally toward the sclera, comparing the values before
+    and after the current point at which it is looking. It compiles these into a
+    lits and returns the list. it compares using a t test varient'''
     data = []
     history = []#this really should be a LL or QUEUE but makes np.mean hard
     future = []
@@ -208,6 +221,9 @@ def walkOneSideBetter(direction, radius, img,center,historySize = 10,incrementST
     return 255 * np.array(data)/max(data), edge
 
 def expandLateral(filename):
+    '''This method will use the better walk to get the lists of one side of the
+    eye with the other. It will then multuply the lists together to get an approximate of
+    where a radius could be'''
     _,radius, _, values, img, center = getBaseline(filename)
     irisRad1,edge1 = walkOneSideBetter(1,radius,img,center)
     irisRad2,edge2 = walkOneSideBetter(-1,radius,img,center)
