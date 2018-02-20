@@ -249,6 +249,42 @@ def getPupil(filename):
     pupil buts up against the iris'''
     pass
 
+def islandProblem(mask):
+    global mean
+    global number
+    global foundOne
+    global start
+    mean = [0.0,0.0]
+    number = 0
+    ys,xs = mask.shape[:2]
+    xmid = xs/2
+    ymid = ys/2
+    values = getdistanceNumpy((xmid,ymid),(ys,xs))
+    start = 1
+    foundOne = 1
+    width = 1
+    i = 0
+    def updateMean(newNum,maskVal):
+        global mean
+        global number
+        global foundOne
+        global start
+        if maskVal:
+            number +=1
+            mean[0] += (newNum[1][0]-mean[0])/number
+            mean[1] += (newNum[1][1]-mean[1])/number
+            foundOne = 1
+            start = 0
+
+    while start or foundOne:
+        foundOne = 0
+        pixels = getNextBand(width, i, values)
+        i += width
+        [updateMean(newNum,mask[newNum[1]]) for newNum in pixels]
+
+    mean = mean[::-1]
+    return mean
+
 
 def displayImg(filename):
     '''mainloop ive used for testing the expansion technique. This uses a
@@ -260,7 +296,12 @@ def displayImg(filename):
     img = cv2.medianBlur(img,5)
     kernel = np.ones((3,3),np.uint8)
 
-    gray_filtered = cv2.inRange(img, 0, 60)
+    gray_filtered = cv2.inRange(img, 0, 50)
+    cv2.imshow('detected circles',gray_filtered)
+    cv2.waitKey(0)
+    centerIsland = islandProblem(gray_filtered)
+
+
     mask = cv2.erode(gray_filtered,kernel,iterations = 1)
     mask = cv2.morphologyEx(mask, cv2.MORPH_GRADIENT, kernel)
 
@@ -273,6 +314,9 @@ def displayImg(filename):
         # cv2.circle(img,(i[0],i[1]),2,255,3)
         center = (i[0],i[1])
         break
+    print center
+    print centerIsland
+    return
 
     values = getdistanceNumpy(center,img.shape[:2])
     for i in range(0, width*40,width):
@@ -301,6 +345,6 @@ if __name__ == "__main__":
     numEyes = 0
     for filename in os.listdir(directory):
         if filename.endswith(".jpg"):
-            expandLateral(filename)
+            displayImg(filename)
         numEyes +=1
-        if numEyes > 3: break
+        if numEyes > 10: break
