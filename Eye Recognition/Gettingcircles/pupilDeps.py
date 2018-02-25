@@ -97,6 +97,7 @@ def walkOneSideBetter(direction, radius, img,center,historySize = 10,incrementST
             d = (futureMean-historyMean)/np.hypot(stdH,stdF)
         data.append(d)
     return np.array(data)/max(data), edge
+
 def getBaseline(filename,width =3):
     '''the goal of this function is to find the brightest band in the iris and use
     that to inform about whether or not an individual pixel belongs to the iris'''
@@ -105,7 +106,7 @@ def getBaseline(filename,width =3):
     history = []
     diffHistory = []
     dangaZone = False
-    thres = 60
+    thres = None
     '''we don't want to start looking for a max until we are in
     iris territory so this will approximate when we reach that point'''
     values, img, center = getMaxHeap(filename)
@@ -116,6 +117,8 @@ def getBaseline(filename,width =3):
         pixels = getNextBand(width, i, values)#get the pixels to be indexed in the image
         band = np.array([img[pix[1]] for pix in pixels])#get the values
         mean = np.mean(band)
+        if thres == None or mean < thres:
+            thres = mean
         bandmin = np.min(band)
         history.append(mean)
         if (not dangaZone) and len(history)-1:
@@ -130,8 +133,7 @@ def getBaseline(filename,width =3):
         elif dangaZone and mean < highestMean:
             #if we get to the point where we are no longer increasing, return
             return highestBand,i, pupilRad, values2, img, center
-    print "never returned"
-    print dangaZone
+    raise
 
 def getBaselineOld(filename, cutoff= 2,width =3):
     '''the goal of this function is to find the brightest band in the iris and use
@@ -250,9 +252,9 @@ def expandLateral(filename):
     '''This method will use the better walk to get the lists of one side of the
     eye with the other. It will then multuply the lists together to get an approximate of
     where a radius could be'''
-    _,radius, _, values, img, center = getBaseline(filename)
+    _,radius, pupilRad, values, img, center = getBaseline(filename)
     irisRad1,edge1 = walkOneSideBetter(1,radius,img,center)
     irisRad2,edge2 = walkOneSideBetter(-1,radius,img,center)
     total = irisRad1 * irisRad2
     total = 255 * total/max(total)
-    return 255*irisRad2,total,255*irisRad1,edge1,edge2
+    return 255*irisRad2,total,255*irisRad1,edge1,edge2,pupilRad

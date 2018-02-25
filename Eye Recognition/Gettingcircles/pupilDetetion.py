@@ -68,29 +68,41 @@ def displayImg(filename):
     img = cv2.medianBlur(img,5)
     kernel = np.ones((3,3),np.uint8)
 
-    gray_filtered = cv2.inRange(img, 0, 50)
+    gray_filtered = cv2.inRange(img, 0, 60)
+    # cv2.imshow('detected circles',gray_filtered)
+    # # cv2.waitKey(0)
     # cv2.imshow('detected circles',gray_filtered)
     # cv2.waitKey(0)
-    centerIsland = islandProblem(gray_filtered)
+    mask = cv2.erode(gray_filtered,kernel,iterations = 1)
+    centerIsland = islandProblem(mask)
     centerIsland = int(centerIsland[0]),int(centerIsland[1])
 
 
-    mask = cv2.erode(gray_filtered,kernel,iterations = 1)
+    # mask = cv2.erode(gray_filtered,kernel,iterations = 1)
+    # cv2.imshow('detected circles',mask)
+    # cv2.waitKey(0)
     mask = cv2.morphologyEx(mask, cv2.MORPH_GRADIENT, kernel)
 
     circles = cv2.HoughCircles(mask,cv2.HOUGH_GRADIENT,2,100,
                                 param1=80,param2=60)
-    for i in circles[0,:]:
-        # draw the outer circle
-        cv2.circle(img,centerIsland,i[2],255,1, cv2.LINE_AA)
-        # # draw the center of the circle
-        cv2.circle(img,centerIsland,2,255,3)
-        center = (i[0],i[1])
-        break
 
-    left,total,right, edge1,edge2 = expandLateral(filename)
-    radius = int(edge1-center[0]) + np.argmax(total)
+    left,total,right, edge1,edge2,pupilRad = expandLateral(filename)
+    radius = int(edge1-centerIsland[0]) + np.argmax(total)
+
+    if circles is not None:
+        for i in circles[0,:]:
+            # draw the outer circle
+            pupilRad+= i[2]
+            pupilRad =int(pupilRad//2)
+            # cv2.circle(img,centerIsland,i[2],255,1, cv2.LINE_AA)
+            # # # draw the center of the circle
+            # cv2.circle(img,centerIsland,2,255,3)
+            # center = (i[0],i[1])
+            break
+    cv2.circle(img,centerIsland,2,255,3)
+    cv2.circle(img,centerIsland,pupilRad,255,1, cv2.LINE_AA)
     cv2.circle(img,centerIsland,radius,255,1, cv2.LINE_AA)
+
     # print center
     # print centerIsland
     # values = getdistanceNumpy(center,img.shape[:2])
@@ -111,11 +123,12 @@ def displayImg(filename):
 # cv2.destroyAllWindows()
 
 if __name__ == "__main__":
+    chance = 0.05
     directory  = '../EyePictures/'
 
     numEyes = 0
     for filename in os.listdir(directory):
-        if filename.endswith(".jpg"):
+        if filename.endswith(".jpg") and np.random.rand() < chance:
             displayImg(filename)
-        numEyes +=1
+            numEyes +=1
         if numEyes > 10: break
