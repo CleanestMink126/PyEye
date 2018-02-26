@@ -10,9 +10,45 @@ from pupilDeps import *
 width = 3
 # for i in range(0, width*20,width):
 #     print getNextBand(width, i, values)
+bins = np.arange(256)
+def irisLikelihood(myImg, numBoxes):
+    img = np.array(myImg)
+    xb,yb, =myImg.xs//numBoxes,myImg.ys//numBoxes
+    numx,numy= myImg.xs/xb,myImg.ys/yb
+    size = xb*yb
+    for i in range(numx):
+        for j in range(numy):
+            matrix = img[j*yb:(j+1)*yb,i*xb:(i+1)*xb]
+            hist = np.histogram(matrix,bins=bins)[0]
+            # print(hist)
+            hist = np.array(hist,dtype=np.float32)/size
+            # print(hist)
+            likelihood = np.sum(np.sqrt(hist * myImg.histogram))
+            img[j*yb:(j+1)*yb,i*xb:(i+1)*xb] = likelihood*255
+    myImg.likelihood =  img
+
+def examineLikelihood(filename):
+    '''mainloop ive used for testing the expansion technique. This uses a
+    combinations of bluirring, erosion, a mask, and gradient to get a likely
+    pupil out of an image'''
+    myImg = imageContainer(filename)
+    if myImg.pupilRad is None:
+        getBaseline(myImg)
+    myImg.histogram =  np.array(np.histogram(myImg.irisTerritory,bins = bins)[0],np.float32)/len(myImg.irisTerritory)
+    irisLikelihood(myImg,50)
+
+
+def getMask(pupilRadius,irisRadius,size,center):
+    x = np.arange(size[1])
+    y = np.transpose(np.arange(size[0]))
+    z = np.sqrt((x-center[0])**2 + (y[:, np.newaxis]-center[1])**2)
+    return (pupilRadius<z) & (z < irisRadius)
+
+#
 
 # def changeValue(img, ):
 def examineBaseline(filename):
+    '''DEPRECATED -------------------------'''
     '''This will use getbaseline to approximate the standard deviation and mean
     of the pixel values of the eye. Then it will change each point in a certain
     radius to a value approximating how far away from the iris mean'''
@@ -39,6 +75,7 @@ def examineBaseline(filename):
 
 
 def showLateral(filename):
+    '''DEPRECATED----------------'''
     left,total,right, edge1,edge2 = expandLateral(filename)
     for i,v in enumerate(total):
         img[(int(center[1]-1), int(edge1+ i))] = irisRad2[i]
@@ -47,62 +84,42 @@ def showLateral(filename):
         img[(int(center[1]), int(edge2- i))] = irisRad2[i]
         img[(int(center[1]+1), int(edge1+ i))] = v
         img[(int(center[1]+1), int(edge2- i))] = v
-
-
     cv2.imshow('detected circles',img)
     cv2.waitKey(0)
-
-def getPupil(filename):
-    '''the aim of this function is to find the pixels where the border of the
-    pupil buts up against the iris'''
-    pass
-
 
 def displayImg(filename):
     '''mainloop ive used for testing the expansion technique. This uses a
     combinations of bluirring, erosion, a mask, and gradient to get a likely
     pupil out of an image'''
     history = []
-
-    img = cv2.imread('../EyePictures/' + filename,0)
-    img = cv2.medianBlur(img,5)
+    myImg = imageContainer(filename)
+    img = cv2.medianBlur(myImg.img,5)
     kernel = np.ones((3,3),np.uint8)
-
     gray_filtered = cv2.inRange(img, 0, 60)
-    # cv2.imshow('detected circles',gray_filtered)
-    # # cv2.waitKey(0)
-    # cv2.imshow('detected circles',gray_filtered)
-    # cv2.waitKey(0)
     mask = cv2.erode(gray_filtered,kernel,iterations = 1)
     centerIsland = islandProblem(mask)
-    centerIsland = int(centerIsland[0]),int(centerIsland[1])
-
-
-    # mask = cv2.erode(gray_filtered,kernel,iterations = 1)
-    # cv2.imshow('detected circles',mask)
-    # cv2.waitKey(0)
+    myImg.center = int(centerIsland[0]),int(centerIsland[1])
     mask = cv2.morphologyEx(mask, cv2.MORPH_GRADIENT, kernel)
-
     circles = cv2.HoughCircles(mask,cv2.HOUGH_GRADIENT,2,100,
                                 param1=80,param2=60)
-
-    left,total,right, edge1,edge2,pupilRad = expandLateral(filename)
-    radius = int(edge1-centerIsland[0]) + np.argmax(total)
-
+    left,total,right = expandLateral(myImg)
+    radius = int(edge1-myImg.center[0]) + np.argmax(total)
     if circles is not None:
         for i in circles[0,:]:
             # draw the outer circle
-            pupilRad+= i[2]
-            pupilRad =int(pupilRad//2)
+            myImg.pupilRad+= i[2]
+            myImg.pupilRad =int(myImg.pupilRad//2)
             # cv2.circle(img,centerIsland,i[2],255,1, cv2.LINE_AA)
             # # # draw the center of the circle
             # cv2.circle(img,centerIsland,2,255,3)
             # center = (i[0],i[1])
             break
-    cv2.circle(img,centerIsland,2,255,3)
-    cv2.circle(img,centerIsland,pupilRad,255,1, cv2.LINE_AA)
-    cv2.circle(img,centerIsland,radius,255,1, cv2.LINE_AA)
-
+    cv2.circle(myImg.img,myImg.center,2,255,3)
+    cv2.circle(myImg.img,myImg.center,myImg.pupilRad,255,1, cv2.LINE_AA)
+    cv2.circle(myImg.img,myImg.center,myImg.irisRad,255,1, cv2.LINE_AA)
+    img2 = examineLikelihood(filename)
+    img2[:,:] = np.where(getMask(pupilRad,radius,img.shape[:2],centerIsland),img2[:,:],0)
+    img[:,:] = np.where(getMask(pupilRad,radius,img.shape[:2],centerIsland),img[:,:],0)
     # print center
     # print centerIsland
     # values = getdistanceNumpy(center,img.shape[:2])
@@ -117,6 +134,8 @@ def displayImg(filename):
     # history = []
     # plt.show()
     cv2.imshow('detected circles',img)
+    cv2.waitKey(0)
+    cv2.imshow('detected circles',img2)
     cv2.waitKey(0)
 #
 #

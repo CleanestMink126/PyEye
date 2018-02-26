@@ -9,56 +9,82 @@ import cv2
 #     passs
 # def getDataFromMask(mask):
 #     '''This might find the pupil given the mask'''
-def getMaxHeap(filename,blur = 5):
+class imageContainer:
+    def init(self,filename):
+        self.img = cv2.imread('../EyePictures/' + filename,0)
+        self.ys,self.xs = self.img.shape[:2]
+        self.pupilRad = None
+        self.valueHeap = None
+        self.irisRad = None
+        self.center = None
+        self.mask = None
+        self.maxRad = None
+        self.highestBand = None
+        self.irisTerritory = None
+        self.histogram = None
+        self.likelihood=None
+
+
+def createMaxHeap(myImg,blur = 5):
     '''quickly get the heap of pixels from the image'''
+    if myImg.center is None:
+        img2 = cv2.medianBlur(myImg.img,blur)
+        kernel = np.ones((3,3),np.uint8)
+        gray_filtered = cv2.inRange(img2, 0, 60)
+        mask = cv2.erode(gray_filtered,kernel,iterations = 1)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_GRADIENT, kernel)
+        circles = cv2.HoughCircles(mask,cv2.HOUGH_GRADIENT,2,100,
+                                    param1=80,param2=60)
+        for i in circles[0,:]:
+            # draw the outer circle
+            # cv2.circle(img,(i[0],i[1]),i[2],255,1, cv2.LINE_AA)
+            # # draw the center of the circle
+            # cv2.circle(img,(i[0],i[1]),2,255,3)
+            center = (i[0],i[1])
+            break
+        myImg.center = center
+    getdistanceNumpy(myImg)
 
-    img = cv2.imread('../EyePictures/' + filename,0)
-    img2 = cv2.medianBlur(img,blur)
-    kernel = np.ones((3,3),np.uint8)
-    gray_filtered = cv2.inRange(img2, 0, 60)
-    mask = cv2.erode(gray_filtered,kernel,iterations = 1)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_GRADIENT, kernel)
+def getdistanceNumpy(myImg):
+    '''this function uses numpy to generate a matrix whose values are distances
+    from the center of the proposed circle. the values of this circle are then
+    taken out along witht he indices and put into a min heap'''
+    x = np.arange(myImg.xs)
+    y = np.transpose(np.arange(myImg.ys))
+    z = (x-myImg.center[0])**2 + (y[:, np.newaxis]-myImg.center[1])**2
+    values = [(value, index)for index, value in np.ndenumerate(z)]
+    heapq.heapify(values)
+    myImg.valueHeap = values
 
-    circles = cv2.HoughCircles(mask,cv2.HOUGH_GRADIENT,2,100,
-                                param1=80,param2=60)
-    for i in circles[0,:]:
-        # draw the outer circle
-        # cv2.circle(img,(i[0],i[1]),i[2],255,1, cv2.LINE_AA)
-        # # draw the center of the circle
-        # cv2.circle(img,(i[0],i[1]),2,255,3)
-        center = (i[0],i[1])
-        break
 
-    return getdistanceNumpy(center,img.shape[:2]), img, center
-
-def walkOneSide(direction, radius, img,center,historySize = 10,incrementSTD = 10, cutoff = 2.5):
+def walkOneSide(direction, myImg,historySize = 10,incrementSTD = 10, cutoff = 2.5):
     '''After getting the baseline a.k.a. the brightest part of the iris, this method
     will walk outwards horizontally toward the sclera, comparing the values before
      current point with the current point. When the next point is above a certain
      standard deviation away it will return the radius'''
     history = []#this really should be a LL or QUEUE but makes np.mean hard
-    edge = center[0]+direction*radius
+    edge = myImg.xs+direction*myImg.maxRad
     for i in range(historySize):
         # print (edge - direction * i, center[1])
-        history.append(img[(int(center[1]),int(edge - direction * i))])
+        history.append(myImg.img[(int(myImg.ys),int(edge - direction * i))])
     historyMean = np.mean(history)
     std = np.std(history)
 
-    for i in range(0,int(min(center[0], img.shape[1] - center[0])- radius)):
+    for i in range(0,int(min(myImg.xs, img.xs - myImg.xs)- myImg.maxRad)):
         if not (i % incrementSTD):
             std = np.std(history)
         print history, "1"
         print historyMean
-        new = float(img[(int(center[1]),int(edge + direction * i))])
+        new = float(myImg.img[(int(myImg.ys),int(edge + direction * i))])
         # print new
         if (new - historyMean)/std > cutoff:
-            return radius + i
+            return myImg.maxRad + i
         old = float(history.pop(0))
         history.append(new)
         diff =float(new - old)
         historyMean += diff / historySize
 
-def walkOneSideBetter(direction, radius, img,center,historySize = 10,incrementSTD = 1, cutoff = 0.5):
+def walkOneSideBetter(direction, myImg,historySize = 10,incrementSTD = 1, cutoff = 0.5):
     '''After getting the baseline a.k.a. the brightest part of the iris, this method
     will walk outwards horizontally toward the sclera, comparing the values before
     and after the current point at which it is looking. It compiles these into a
@@ -66,11 +92,11 @@ def walkOneSideBetter(direction, radius, img,center,historySize = 10,incrementST
     data = []
     history = []#this really should be a LL or QUEUE but makes np.mean hard
     future = []
-    edge = center[0]+direction*radius
+    edge = myImg.center[0]+direction*myImg.maxRad
     for i in range(historySize):
         # print (edge - direction * i, center[1])
-        history.append(float(img[(int(center[1]),int(edge - direction * i))]))
-        future.append(float(img[(int(center[1]),int(edge + direction * i))]))
+        history.append(float(myImg.img[(int(myImg.center[1]),int(edge - direction * i))]))
+        future.append(float(myImg.img[(int(myImg.center[1]),int(edge + direction * i))]))
 
     historyMean = np.mean(history)
     stdH = np.std(history)
@@ -78,11 +104,11 @@ def walkOneSideBetter(direction, radius, img,center,historySize = 10,incrementST
     futureMean = np.mean(future)
     stdF = np.std(future)
 
-    for i in range(0,int(min(center[0], img.shape[1] - center[0])- radius- historySize)):
+    for i in range(0,int(min(myImg.center[0], img.xs - myImg.center[0])- myImg.maxRad- historySize)):
         if not (i % incrementSTD):
             stdH = np.std(history)
             stdF = np.std(future)
-        newF = float(img[(int(center[1]),int(edge + direction * (i+ historySize)))])
+        newF = float(myImg.img[(int(myImg.center[1]),int(edge + direction * (i+ historySize)))])
         newH = future.pop(0)
         oldH = history.pop(0)
         history.append(newH)
@@ -98,9 +124,10 @@ def walkOneSideBetter(direction, radius, img,center,historySize = 10,incrementST
         data.append(d)
     return np.array(data)/max(data), edge
 
-def getBaseline(filename,width =3):
+def getBaseline(myImg,width =3):
     '''the goal of this function is to find the brightest band in the iris and use
     that to inform about whether or not an individual pixel belongs to the iris'''
+    irisTerritory = []
     highestBand = []
     highestMean = 0
     history = []
@@ -109,10 +136,9 @@ def getBaseline(filename,width =3):
     thres = None
     '''we don't want to start looking for a max until we are in
     iris territory so this will approximate when we reach that point'''
-    values, img, center = getMaxHeap(filename)
-    iy,ix = img.shape[:2]
-    maxRange = int(min(ix - center[0],center[0],iy - center[1],center[1]))
-    values2 = copy.deepcopy(values)
+    maxRange = int(min(myImg.xs - myImg.center[0],myImg.center[0],myImg.ys - myImg.center[1],myImg.center[1]))
+    values2 = copy.deepcopy(myImg.values)
+    width = myImg.width
     for i in range(0, maxRange-width,width):
         pixels = getNextBand(width, i, values)#get the pixels to be indexed in the image
         band = np.array([img[pix[1]] for pix in pixels])#get the values
@@ -130,12 +156,20 @@ def getBaseline(filename,width =3):
             #after we know we are in iris territory, keep track of highest mean band
             highestMean = mean
             highestBand = band
+            irisTerritory.append(band)
         elif dangaZone and mean < highestMean:
             #if we get to the point where we are no longer increasing, return
-            return highestBand,i, pupilRad, values2, img, center
-    raise
+            irisTerritory.append(band)
+            myImg.histestBand = highestBand
+            myImg.pupilRad = pupilRad
+            myImg.maxRad = i
+            myImg.irisTerritory = irisTerritory
+            return True
+
+    return False
 
 def getBaselineOld(filename, cutoff= 2,width =3):
+    '''DEPRECATED ---------------------------------------------'''
     '''the goal of this function is to find the brightest band in the iris and use
     that to inform about whether or not an individual pixel belongs to the iris'''
     highestBand = []
@@ -144,7 +178,7 @@ def getBaselineOld(filename, cutoff= 2,width =3):
     dangaZone = False
     '''we don't want to start looking for a max until we are in
     iris territory so this will approximate when we reach that point'''
-    values, img, center = getMaxHeap(filename)
+    values, img, center = createMaxHeap(filename)
     values2 = copy.deepcopy(values)
     for i in range(0, width*40,width):
         pixels = getNextBand(width, i, values)#get the pixels to be indexed in the image
@@ -176,6 +210,7 @@ def getBaselineOld(filename, cutoff= 2,width =3):
     print dangaZone
 
 def examineBaselinePlot(filename):
+    '''DEPRECATED ----------------------------'''
     '''this will plot the average pixel value as the radius expands from the
     center of the pupil'''
     highestBand,radius, pupilRad, values, img, center = getBaseline(filename)
@@ -192,16 +227,6 @@ def examineBaselinePlot(filename):
     history = []
     plt.show()
 
-def getdistanceNumpy(center, size):
-    '''this function uses numpy to generate a matrix whose values are distances
-    from the center of the proposed circle. the values of this circle are then
-    taken out along witht he indices and put into a min heap'''
-    x = np.arange(size[1])
-    y = np.transpose(np.arange(size[0]))
-    z = (x-center[0])**2 + (y[:, np.newaxis]-center[1])**2
-    values = [(value, index)for index, value in np.ndenumerate(z)]
-    heapq.heapify(values)
-    return values
 
 def getNextBand(width, radius, heap):
     '''this function will return an appropriate amount of correct pixels given the
@@ -248,13 +273,15 @@ def islandProblem(mask):
     return mean
 
 
-def expandLateral(filename):
+def expandLateral(myImg):
     '''This method will use the better walk to get the lists of one side of the
     eye with the other. It will then multuply the lists together to get an approximate of
     where a radius could be'''
-    _,radius, pupilRad, values, img, center = getBaseline(filename)
-    irisRad1,edge1 = walkOneSideBetter(1,radius,img,center)
-    irisRad2,edge2 = walkOneSideBetter(-1,radius,img,center)
+    getBaseline(myImg)
+    irisRadRight,edgeRight = walkOneSideBetter(1,myImg)
+    irisRadLeft,edgeLeft = walkOneSideBetter(-1,myImg)
     total = irisRad1 * irisRad2
     total = 255 * total/max(total)
-    return 255*irisRad2,total,255*irisRad1,edge1,edge2,pupilRad
+    myImg.edgeRight = edgeRight
+    myImg.edgeLeft = edgeLeft
+    return 255*irisRad2,total,255*irisRad1
