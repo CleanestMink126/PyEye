@@ -10,9 +10,10 @@ import cv2
 # def getDataFromMask(mask):
 #     '''This might find the pupil given the mask'''
 class imageContainer:
-    def init(self,filename):
+    def __init__(self,filename):
         self.img = cv2.imread('../EyePictures/' + filename,0)
         self.ys,self.xs = self.img.shape[:2]
+        self.width =1
         self.pupilRad = None
         self.valueHeap = None
         self.irisRad = None
@@ -51,7 +52,7 @@ def getdistanceNumpy(myImg):
     taken out along witht he indices and put into a min heap'''
     x = np.arange(myImg.xs)
     y = np.transpose(np.arange(myImg.ys))
-    z = (x-myImg.center[0])**2 + (y[:, np.newaxis]-myImg.center[1])**2
+    z = np.sqrt((x-myImg.center[0])**2 + (y[:, np.newaxis]-myImg.center[1])**2)
     values = [(value, index)for index, value in np.ndenumerate(z)]
     heapq.heapify(values)
     myImg.valueHeap = values
@@ -104,7 +105,7 @@ def walkOneSideBetter(direction, myImg,historySize = 10,incrementSTD = 1, cutoff
     futureMean = np.mean(future)
     stdF = np.std(future)
 
-    for i in range(0,int(min(myImg.center[0], img.xs - myImg.center[0])- myImg.maxRad- historySize)):
+    for i in range(0,int(min(myImg.center[0], myImg.xs - myImg.center[0])- myImg.maxRad- historySize)):
         if not (i % incrementSTD):
             stdH = np.std(history)
             stdF = np.std(future)
@@ -124,7 +125,7 @@ def walkOneSideBetter(direction, myImg,historySize = 10,incrementSTD = 1, cutoff
         data.append(d)
     return np.array(data)/max(data), edge
 
-def getBaseline(myImg,width =3):
+def getBaseline(myImg,width =3,saveTerritory = True):
     '''the goal of this function is to find the brightest band in the iris and use
     that to inform about whether or not an individual pixel belongs to the iris'''
     irisTerritory = []
@@ -137,12 +138,17 @@ def getBaseline(myImg,width =3):
     '''we don't want to start looking for a max until we are in
     iris territory so this will approximate when we reach that point'''
     maxRange = int(min(myImg.xs - myImg.center[0],myImg.center[0],myImg.ys - myImg.center[1],myImg.center[1]))
-    values2 = copy.deepcopy(myImg.values)
+    getdistanceNumpy(myImg)
     width = myImg.width
+
     for i in range(0, maxRange-width,width):
-        pixels = getNextBand(width, i, values)#get the pixels to be indexed in the image
-        band = np.array([img[pix[1]] for pix in pixels])#get the values
+        pixels = getNextBand(width, i, myImg.valueHeap)#get the pixels to be indexed in the image
+        band = np.array([myImg.img[pix[1]] for pix in pixels])#get the values
         mean = np.mean(band)
+        # if i <1:
+        #     print(band)
+        # print(mean)
+
         if thres == None or mean < thres:
             thres = mean
         bandmin = np.min(band)
@@ -156,14 +162,16 @@ def getBaseline(myImg,width =3):
             #after we know we are in iris territory, keep track of highest mean band
             highestMean = mean
             highestBand = band
-            irisTerritory.append(band)
+            if saveTerritory:
+                irisTerritory = np.concatenate((irisTerritory,band))
         elif dangaZone and mean < highestMean:
             #if we get to the point where we are no longer increasing, return
-            irisTerritory.append(band)
+            if saveTerritory:
+                irisTerritory = np.concatenate((irisTerritory,band))
+                myImg.irisTerritory = irisTerritory
             myImg.histestBand = highestBand
             myImg.pupilRad = pupilRad
             myImg.maxRad = i
-            myImg.irisTerritory = irisTerritory
             return True
 
     return False
@@ -236,7 +244,7 @@ def getNextBand(width, radius, heap):
     # print(numBoxes)
     return [heapq.heappop(heap) for i in range(int(numBoxes))]
 
-def islandProblem(mask):
+def islandProblem(mask,myImg):
     global mean
     global number
     global foundOne
@@ -246,11 +254,13 @@ def islandProblem(mask):
     ys,xs = mask.shape[:2]
     xmid = xs/2
     ymid = ys/2
-    values = getdistanceNumpy((xmid,ymid),(ys,xs))
+    getdistanceNumpy(myImg)
     start = 1
     foundOne = 1
     width = 1
     i = 0
+    # print(values)
+    # print(values[:100])
     def updateMean(newNum,maskVal):
         global mean
         global number
@@ -265,7 +275,7 @@ def islandProblem(mask):
 
     while start or foundOne:
         foundOne = 0
-        pixels = getNextBand(width, i, values)
+        pixels = getNextBand(width, i, myImg.valueHeap)
         i += width
         [updateMean(newNum,mask[newNum[1]]) for newNum in pixels]
 
@@ -277,11 +287,11 @@ def expandLateral(myImg):
     '''This method will use the better walk to get the lists of one side of the
     eye with the other. It will then multuply the lists together to get an approximate of
     where a radius could be'''
-    getBaseline(myImg)
+    print(getBaseline(myImg))
     irisRadRight,edgeRight = walkOneSideBetter(1,myImg)
     irisRadLeft,edgeLeft = walkOneSideBetter(-1,myImg)
-    total = irisRad1 * irisRad2
+    total = irisRadLeft * irisRadRight
     total = 255 * total/max(total)
     myImg.edgeRight = edgeRight
     myImg.edgeLeft = edgeLeft
-    return 255*irisRad2,total,255*irisRad1
+    return 255*irisRadLeft,total,255*irisRadRight

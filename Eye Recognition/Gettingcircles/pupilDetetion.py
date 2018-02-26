@@ -12,7 +12,7 @@ width = 3
 #     print getNextBand(width, i, values)
 bins = np.arange(256)
 def irisLikelihood(myImg, numBoxes):
-    img = np.array(myImg)
+    img = np.array(myImg.img)
     xb,yb, =myImg.xs//numBoxes,myImg.ys//numBoxes
     numx,numy= myImg.xs/xb,myImg.ys/yb
     size = xb*yb
@@ -27,22 +27,23 @@ def irisLikelihood(myImg, numBoxes):
             img[j*yb:(j+1)*yb,i*xb:(i+1)*xb] = likelihood*255
     myImg.likelihood =  img
 
-def examineLikelihood(filename):
+def examineLikelihood(myImg):
     '''mainloop ive used for testing the expansion technique. This uses a
     combinations of bluirring, erosion, a mask, and gradient to get a likely
     pupil out of an image'''
-    myImg = imageContainer(filename)
     if myImg.pupilRad is None:
         getBaseline(myImg)
+    if myImg.irisTerritory is None:
+        myImg.irisTerritory = myImg.highestBand
     myImg.histogram =  np.array(np.histogram(myImg.irisTerritory,bins = bins)[0],np.float32)/len(myImg.irisTerritory)
     irisLikelihood(myImg,50)
 
 
-def getMask(pupilRadius,irisRadius,size,center):
-    x = np.arange(size[1])
-    y = np.transpose(np.arange(size[0]))
-    z = np.sqrt((x-center[0])**2 + (y[:, np.newaxis]-center[1])**2)
-    return (pupilRadius<z) & (z < irisRadius)
+def getMask(myImg):
+    x = np.arange(myImg.xs)
+    y = np.transpose(np.arange(myImg.ys))
+    z = np.sqrt((x-myImg.center[0])**2 + (y[:, np.newaxis]-myImg.center[1])**2)
+    return (myImg.pupilRad<z) & (z < myImg.irisRad)
 
 #
 
@@ -93,17 +94,26 @@ def displayImg(filename):
     pupil out of an image'''
     history = []
     myImg = imageContainer(filename)
+    myImg.center = myImg.xs,myImg.ys
+    cv2.imshow('detected circles',myImg.img)
+    cv2.waitKey(0)
     img = cv2.medianBlur(myImg.img,5)
     kernel = np.ones((3,3),np.uint8)
     gray_filtered = cv2.inRange(img, 0, 60)
     mask = cv2.erode(gray_filtered,kernel,iterations = 1)
-    centerIsland = islandProblem(mask)
+    print("masks done")
+    centerIsland = islandProblem(mask,myImg)
     myImg.center = int(centerIsland[0]),int(centerIsland[1])
+    print("island done")
     mask = cv2.morphologyEx(mask, cv2.MORPH_GRADIENT, kernel)
     circles = cv2.HoughCircles(mask,cv2.HOUGH_GRADIENT,2,100,
                                 param1=80,param2=60)
+    print("Circles found")
     left,total,right = expandLateral(myImg)
-    radius = int(edge1-myImg.center[0]) + np.argmax(total)
+    print("found edges")
+    # print(myImg.center[0])
+    # print(right-myImg.center[0])
+    myImg.irisRad = int(myImg.edgeRight-myImg.center[0]) + np.argmax(total)
     if circles is not None:
         for i in circles[0,:]:
             # draw the outer circle
@@ -115,11 +125,14 @@ def displayImg(filename):
             # center = (i[0],i[1])
             break
     cv2.circle(myImg.img,myImg.center,2,255,3)
-    cv2.circle(myImg.img,myImg.center,myImg.pupilRad,255,1, cv2.LINE_AA)
-    cv2.circle(myImg.img,myImg.center,myImg.irisRad,255,1, cv2.LINE_AA)
-    img2 = examineLikelihood(filename)
-    img2[:,:] = np.where(getMask(pupilRad,radius,img.shape[:2],centerIsland),img2[:,:],0)
-    img[:,:] = np.where(getMask(pupilRad,radius,img.shape[:2],centerIsland),img[:,:],0)
+    cv2.circle(myImg.img,myImg.center,int(myImg.pupilRad),255,1, cv2.LINE_AA)
+    cv2.circle(myImg.img,myImg.center,int(myImg.irisRad),255,1, cv2.LINE_AA)
+    examineLikelihood(myImg)
+    print("Examined likelihood")
+    cv2.imshow('detected circles',myImg.likelihood)
+    cv2.waitKey(0)
+    myImg.likelihood[:,:] = np.where(getMask(myImg),myImg.likelihood[:,:],0)
+    myImg.img[:,:] = np.where(getMask(myImg),myImg.img[:,:],0)
     # print center
     # print centerIsland
     # values = getdistanceNumpy(center,img.shape[:2])
@@ -133,9 +146,9 @@ def displayImg(filename):
     # plt.plot(history)#this will plot the average pixel value with each expansion
     # history = []
     # plt.show()
-    cv2.imshow('detected circles',img)
+    cv2.imshow('detected circles',myImg.img)
     cv2.waitKey(0)
-    cv2.imshow('detected circles',img2)
+    cv2.imshow('detected circles',myImg.likelihood)
     cv2.waitKey(0)
 #
 #
