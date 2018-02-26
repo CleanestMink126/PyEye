@@ -27,7 +27,30 @@ def irisLikelihood(myImg, numBoxes):
             img[j*yb:(j+1)*yb,i*xb:(i+1)*xb] = likelihood*255
     myImg.likelihood =  img
 
-def examineLikelihood(myImg):
+def irisLikelihoodVairable(myImg, size,spacing):
+    if myImg.pupilRad is None:
+        getBaseline(myImg)
+    if myImg.irisTerritory is None:
+        myImg.irisTerritory = myImg.highestBand
+    myImg.histogram =  np.array(np.histogram(myImg.irisTerritory,bins = bins)[0],np.float32)/len(myImg.irisTerritory)
+    img = np.array(myImg.img)
+    holder = np.zeros(img.shape,dtype=np.float32)
+    area= size[1] * size[0]
+    numx,numy= 1 + (myImg.xs-size[0])/spacing[0],1 + (myImg.ys-size[1])/spacing[1]
+    for i in range(numx):
+        for j in range(numy):
+            matrix = img[j*spacing[1]:j*spacing[1] + size[1] ,i*spacing[0]:i*spacing[0] + size[0]]
+            hist = np.histogram(matrix,bins=bins)[0]
+            hist = np.array(hist,dtype=np.float32)/area
+            # print(sum(hist))
+            likelihood = 255.0* np.sum(np.sqrt(hist * myImg.histogram))
+            # print(likelihood)
+            holder[size[1]//2 + j*spacing[1]:size[1]//2 +(j+1)*spacing[1] ,size[0]//2 + i*spacing[0]:size[0]//2 + (i+1)*spacing[0]] = likelihood
+    img[:,:] = holder
+    myImg.likelihood =  img
+
+
+def examineLikelihood(myImg,numBoxes):
     '''mainloop ive used for testing the expansion technique. This uses a
     combinations of bluirring, erosion, a mask, and gradient to get a likely
     pupil out of an image'''
@@ -36,7 +59,7 @@ def examineLikelihood(myImg):
     if myImg.irisTerritory is None:
         myImg.irisTerritory = myImg.highestBand
     myImg.histogram =  np.array(np.histogram(myImg.irisTerritory,bins = bins)[0],np.float32)/len(myImg.irisTerritory)
-    irisLikelihood(myImg,50)
+    irisLikelihood(myImg,numBoxes)
 
 
 def getMask(myImg):
@@ -127,7 +150,7 @@ def displayImg(filename):
     cv2.circle(myImg.img,myImg.center,2,255,3)
     cv2.circle(myImg.img,myImg.center,int(myImg.pupilRad),255,1, cv2.LINE_AA)
     cv2.circle(myImg.img,myImg.center,int(myImg.irisRad),255,1, cv2.LINE_AA)
-    examineLikelihood(myImg)
+    irisLikelihoodVairable(myImg,size=[5,5] ,spacing=[1,1])
     print("Examined likelihood")
     cv2.imshow('detected circles',myImg.likelihood)
     cv2.waitKey(0)
