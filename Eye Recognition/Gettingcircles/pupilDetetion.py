@@ -150,7 +150,7 @@ def displayImg(filename):
     cv2.circle(myImg.img,myImg.center,2,255,3)
     cv2.circle(myImg.img,myImg.center,int(myImg.pupilRad),255,1, cv2.LINE_AA)
     cv2.circle(myImg.img,myImg.center,int(myImg.irisRad),255,1, cv2.LINE_AA)
-    irisLikelihoodVairable(myImg,size=[5,5] ,spacing=[1,1])
+    irisLikelihoodVairable(myImg,size=[10,10] ,spacing=[2,2])
     print("Examined likelihood")
     cv2.imshow('detected circles',myImg.likelihood)
     cv2.waitKey(0)
