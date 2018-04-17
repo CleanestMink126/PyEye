@@ -7,14 +7,17 @@ from matplotlib import pyplot as plt
 def calculateRadius(x,y):
     return int(math.sqrt(x**2 + y**2))
 
-def polarToCart(path, center_x=0, center_y=0, radius = 0):
+def polarToCart(path, center_x=0, center_y=0, radius = 0,gray = 1):
     '''
     Polor to Cartesian Transform function. Works with both squares
     and rectangles. x,y center and radius can be defined by the user
     if desired.
     '''
-    img = cv2.imread(path)
-    gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    if gray:
+        gray_img = cv2.imread(path,0)
+    else:
+        img = cv2.imread(path)
+        gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     print(gray_img.shape)
 
     angle = 360

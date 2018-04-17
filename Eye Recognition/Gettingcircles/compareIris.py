@@ -3,6 +3,7 @@ import pickle
 import polarTransform
 import pupilDetection
 import os
+import pupilDeps
 
 
 def analyzePerson(iris_list):
@@ -55,16 +56,30 @@ class iris_db:
 
 if __name__ == "__main__":
 
-    directory  = '../EyePictures/'
-
+    directory  = '../EyePictures/CASIA/'
+    subfolder = '1/'
     numEyes = 0
     for filename in os.listdir(directory):
-        if filename.endswith(".jpg"):
-            myImg = pupilDetection.getCircles(directory+filename)
-            new_img = polarTransform.polarToCart(path = directory+filename, center_x =myImg.center[1]
-            ,center_y=myImg.center[0], radius = myImg.irisRad)
-            # plt.imshow(new_img, cmap='gray')
-            # plt.show()
-            numEyes +=1
-        if numEyes > 10: break
-    pupilDetection.getCircles()
+        try:
+            personIndex = int(filename)
+            print(personIndex)
+            curr_subfolder = directory + filename+'/'+subfolder
+            for img_name in os.listdir(curr_subfolder):
+                try:
+                    print(img_name)
+                    if img_name.endswith(".bmp"):
+
+                        myImg = pupilDetection.getCircles(curr_subfolder + img_name)
+                        new_img = polarTransform.polarToCart(path = curr_subfolder + img_name, center_x =myImg.center[1]
+                        ,center_y=myImg.center[0], radius = myImg.irisRad)
+                        # plt.imshow(new_img, cmap='gray')
+                        # plt.show()
+                        numEyes +=1
+                except pupilDetection.BaselineError:
+                    print('Baseline Error')
+                if numEyes > 10: break
+            if numEyes > 10: break
+        except ValueError:
+            continue
+
+    # pupilDetection.getCircles()
