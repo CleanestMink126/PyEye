@@ -10,8 +10,8 @@ import cv2
 # def getDataFromMask(mask):
 #     '''This might find the pupil given the mask'''
 class imageContainer:
-    def __init__(self,filename):
-        self.img = cv2.imread('../EyePictures/' + filename,0)
+    def __init__(self,filepath):
+        self.img = cv2.imread(filepath,0)
         self.ys,self.xs = self.img.shape[:2]
         self.width =1
         self.pupilRad = None

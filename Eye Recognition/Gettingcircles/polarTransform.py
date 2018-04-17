@@ -42,6 +42,7 @@ def polarToCart(path, center_x=0, center_y=0, radius = 0):
 
     plt.imshow(new_img, cmap='gray')
     plt.show()
+    return new_img
 
 if __name__ == "__main__":
     path = 'iris0.png'

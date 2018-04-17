@@ -1,4 +1,8 @@
 import numpy as np
+import pickle
+import polarTransform
+import pupilDetection
+import os
 
 
 def analyzePerson(iris_list):
@@ -21,19 +25,46 @@ def compareImages(iris1, iris2):
 
 def rollImage(compared, rolled, scope = 5):
     values = [compareImages(compared,  np.roll(rolled,i, axis = 0)) for i in range(-scope,scope+1)]
-    shift = np.argmin(values) - scope
-    return shift
+    return np.argmin(values) - scope
+
+
+
+class indiv_iris:
+    def __init__(self, info,iris_list):
+        self.iris_list = iris_list
+        self.info = info
+        self.mean_iris, self.list_sums_mean, self.list_sums_std = analyzePerson(self.iris_list)
+
+    def analyzeImage(self,iris):
+        diff = compareImages(self.mean_iris, iris)
+        z_score = (diff - self.list_sums_mean)/self.list_sums_std
+        return z_score
+
+class iris_db:
+    def __init__(self, filename):
+        self.person_list = []
+        self.filename = filename
+
+    def add_person(self,info, iris_list):
+        self.person_list.append(indiv_iris(info, iris_list))
+
+    def save(self):
+        pickle.dump(self, self.filename)
+
+
 
 if __name__ == "__main__":
-    # a = np.array([[1,2,3],[4,5,6],[7,8,9]])
-    # b = np.array([[2,3,4],[5,6,7],[8,9,10]])
-    # print(compareImages(2*a,2*b))
-    # c = np.random.normal(loc = 2, scale = 1, size = (100, 3, 3))
-    # print(analyzePerson(c))
-    # c = np.random.normal(loc = 2, scale = 3, size = (100, 3, 3))
-    # print(analyzePerson(c))
-    a = np.array([[1,2,3],[1,1,1],[1,1,1],[1,1,1],[4,5,6],[7,8,9]])
-    b = np.array([[7,8,9],[1,2,3],[1,1,1],[1,1,1],[1,1,1],[4,5,6]])
-    print(rollImage(a, b, scope = 2))
-    # c = np.random.normal(loc = 4, scale = 3, size = (40, 3, 3))
-    # print(analyzePerson(c))
+
+    directory  = '../EyePictures/'
+
+    numEyes = 0
+    for filename in os.listdir(directory):
+        if filename.endswith(".jpg"):
+            myImg = pupilDetection.getCircles(directory+filename)
+            new_img = polarTransform.polarToCart(path = directory+filename, center_x =myImg.center[1]
+            ,center_y=myImg.center[0], radius = myImg.irisRad)
+            # plt.imshow(new_img, cmap='gray')
+            # plt.show()
+            numEyes +=1
+        if numEyes > 10: break
+    pupilDetection.getCircles()
