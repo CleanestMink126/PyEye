@@ -131,6 +131,10 @@ def displayLikelihood(myImg):
     cv2.imshow('cut likelihood',myImg.likelihood)
     cv2.waitKey(0)
 
+def setViablePixels(myImg, threshold):
+    myImg.viablePixels = np.ones(myImg.img.shape) * 255
+    myImg.viablePixels[myImg.likelihood<threshold] = 0
+
 def getCircles(filename):
     history = []
     myImg = imageContainer(filename)
@@ -160,6 +164,9 @@ def getCircles(filename):
             myImg.pupilRad =int(myImg.pupilRad//2)
             print("adjusted pupilRad")
             break
+
+    examineLikelihood(myImg, 120)
+    setViablePixels(myImg, 30)
 
     # cv2.circle(myImg.img,myImg.center,2,255,3)
     # cv2.circle(myImg.img,myImg.center,int(myImg.pupilRad),255,1, cv2.LINE_AA)

@@ -70,8 +70,13 @@ if __name__ == "__main__":
                     if img_name.endswith(".bmp"):
 
                         myImg = pupilDetection.getCircles(curr_subfolder + img_name)
-                        new_img = polarTransform.polarToCart(path = curr_subfolder + img_name, center_x =myImg.center[1]
-                        ,center_y=myImg.center[0], radius = myImg.irisRad)
+                        new_img = polarTransform.polarToCart(gray_img = myImg.img, center_x =myImg.center[1]
+                        ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad))
+                        new_img = polarTransform.polarToCart(gray_img = myImg.likelihood, center_x =myImg.center[1]
+                        ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad))
+                        new_img = polarTransform.polarToCart(gray_img = myImg.viablePixels, center_x =myImg.center[1]
+                        ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad))
+
                         # plt.imshow(new_img, cmap='gray')
                         # plt.show()
                         numEyes +=1
