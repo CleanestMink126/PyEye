@@ -49,6 +49,14 @@ def irisLikelihoodVairable(myImg, size,spacing):
     img[:,:] = holder
     myImg.likelihood =  img
 
+def calculateDiff(myImg):
+    myImg.diff = np.diff(myImg.img.astype(np.float32), axis = 0).astype(np.uint8)
+    # myImg.irisMean = np.mean(myImg.irisTerritory)
+    # myImg.irisMean = np.mean(myImg.irisTerritory)
+
+# def alternativeLikelihood():
+#     myImg.img
+
 
 def examineLikelihood(myImg,numBoxes):
     '''mainloop ive used for testing the expansion technique. This uses a
@@ -165,7 +173,8 @@ def getCircles(filename):
             print("adjusted pupilRad")
             break
 
-    examineLikelihood(myImg, 120)
+    examineLikelihood(myImg, 100)
+    calculateDiff(myImg)
     setViablePixels(myImg, 30)
 
     # cv2.circle(myImg.img,myImg.center,2,255,3)
