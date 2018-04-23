@@ -49,6 +49,14 @@ def irisLikelihoodVairable(myImg, size,spacing):
     img[:,:] = holder
     myImg.likelihood =  img
 
+def calculateDiff(myImg):
+    myImg.diff = np.diff(myImg.img.astype(np.float32), axis = 0).astype(np.uint8)
+    # myImg.irisMean = np.mean(myImg.irisTerritory)
+    # myImg.irisMean = np.mean(myImg.irisTerritory)
+
+# def alternativeLikelihood():
+#     myImg.img
+
 
 def examineLikelihood(myImg,numBoxes):
     '''mainloop ive used for testing the expansion technique. This uses a
@@ -111,6 +119,71 @@ def showLateral(filename):
     cv2.imshow('detected circles',img)
     cv2.waitKey(0)
 
+def checkAlterantive(mask):
+    kernel = np.ones((3,3),np.uint8)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_GRADIENT, kernel)
+    circles = cv2.HoughCircles(mask,cv2.HOUGH_GRADIENT,2,100,
+                                param1=80,param2=60)
+    print("Circles found")
+    return circles
+
+def displayLikelihood(myImg):
+    irisLikelihoodVairable(myImg,size=[10,10] ,spacing=[2,2])
+    print("Examined likelihood")
+    cv2.imshow('total likelihood',myImg.likelihood)
+    cv2.waitKey(0)
+    myImg.likelihood[:,:] = np.where(getMask(myImg),myImg.likelihood[:,:],0)
+    myImg.img[:,:] = np.where(getMask(myImg),myImg.img[:,:],0)
+    cv2.imshow('cut image',myImg.img)
+    cv2.waitKey(0)
+    cv2.imshow('cut likelihood',myImg.likelihood)
+    cv2.waitKey(0)
+
+def setViablePixels(myImg, threshold):
+    myImg.viablePixels = np.ones(myImg.img.shape) * 255
+    myImg.viablePixels[myImg.likelihood<threshold] = 0
+
+def getCircles(filename):
+    history = []
+    myImg = imageContainer(filename)
+    myImg.center = myImg.xs,myImg.ys
+    # cv2.imshow('detected circles',myImg.img)
+    # cv2.waitKey(0)
+
+    img = cv2.medianBlur(myImg.img,5)
+    kernel = np.ones((3,3),np.uint8)
+    gray_filtered = cv2.inRange(img, 0, 60)
+    mask = cv2.erode(gray_filtered,kernel,iterations = 1)
+    print("masks done")
+
+    centerIsland = islandProblem(mask,myImg)
+    myImg.center = int(centerIsland[0]),int(centerIsland[1])
+    print("island done")
+
+    circles = checkAlterantive(mask)
+    left,total,right = expandLateral(myImg)
+    print("found edges")
+
+    myImg.irisRad = int(myImg.edgeRight-myImg.center[0]) + np.argmax(total)
+    if circles is not None:
+        for i in circles[0,:]:
+            # draw the outer circle
+            myImg.pupilRad+= i[2]
+            myImg.pupilRad =int(myImg.pupilRad//2)
+            print("adjusted pupilRad")
+            break
+
+    examineLikelihood(myImg, 100)
+    calculateDiff(myImg)
+    setViablePixels(myImg, 30)
+
+    # cv2.circle(myImg.img,myImg.center,2,255,3)
+    # cv2.circle(myImg.img,myImg.center,int(myImg.pupilRad),255,1, cv2.LINE_AA)
+    # cv2.circle(myImg.img,myImg.center,int(myImg.irisRad),255,1, cv2.LINE_AA)
+    return myImg
+
+
+
 def displayImg(filename):
     '''mainloop ive used for testing the expansion technique. This uses a
     combinations of bluirring, erosion, a mask, and gradient to get a likely
@@ -120,42 +193,36 @@ def displayImg(filename):
     myImg.center = myImg.xs,myImg.ys
     cv2.imshow('detected circles',myImg.img)
     cv2.waitKey(0)
+
     img = cv2.medianBlur(myImg.img,5)
     kernel = np.ones((3,3),np.uint8)
     gray_filtered = cv2.inRange(img, 0, 60)
     mask = cv2.erode(gray_filtered,kernel,iterations = 1)
     print("masks done")
+
     centerIsland = islandProblem(mask,myImg)
     myImg.center = int(centerIsland[0]),int(centerIsland[1])
     print("island done")
-    mask = cv2.morphologyEx(mask, cv2.MORPH_GRADIENT, kernel)
-    circles = cv2.HoughCircles(mask,cv2.HOUGH_GRADIENT,2,100,
-                                param1=80,param2=60)
-    print("Circles found")
+
+    circles = checkAlterantive(mask)
     left,total,right = expandLateral(myImg)
     print("found edges")
-    # print(myImg.center[0])
-    # print(right-myImg.center[0])
+
     myImg.irisRad = int(myImg.edgeRight-myImg.center[0]) + np.argmax(total)
     if circles is not None:
         for i in circles[0,:]:
             # draw the outer circle
             myImg.pupilRad+= i[2]
             myImg.pupilRad =int(myImg.pupilRad//2)
-            # cv2.circle(img,centerIsland,i[2],255,1, cv2.LINE_AA)
-            # # # draw the center of the circle
-            # cv2.circle(img,centerIsland,2,255,3)
-            # center = (i[0],i[1])
+            print("adjusted pupilRad")
             break
+
     cv2.circle(myImg.img,myImg.center,2,255,3)
     cv2.circle(myImg.img,myImg.center,int(myImg.pupilRad),255,1, cv2.LINE_AA)
     cv2.circle(myImg.img,myImg.center,int(myImg.irisRad),255,1, cv2.LINE_AA)
-    irisLikelihoodVairable(myImg,size=[5,5] ,spacing=[1,1])
-    print("Examined likelihood")
-    cv2.imshow('detected circles',myImg.likelihood)
-    cv2.waitKey(0)
-    myImg.likelihood[:,:] = np.where(getMask(myImg),myImg.likelihood[:,:],0)
-    myImg.img[:,:] = np.where(getMask(myImg),myImg.img[:,:],0)
+
+    displayLikelihood(myImg)
+    return myImg
     # print center
     # print centerIsland
     # values = getdistanceNumpy(center,img.shape[:2])
@@ -169,10 +236,7 @@ def displayImg(filename):
     # plt.plot(history)#this will plot the average pixel value with each expansion
     # history = []
     # plt.show()
-    cv2.imshow('detected circles',myImg.img)
-    cv2.waitKey(0)
-    cv2.imshow('detected circles',myImg.likelihood)
-    cv2.waitKey(0)
+
 #
 #
 # cv2.destroyAllWindows()

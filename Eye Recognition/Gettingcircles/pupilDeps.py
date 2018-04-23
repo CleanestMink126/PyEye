@@ -9,9 +9,12 @@ import cv2
 #     passs
 # def getDataFromMask(mask):
 #     '''This might find the pupil given the mask'''
+class BaselineError():
+    pass
+
 class imageContainer:
-    def __init__(self,filename):
-        self.img = cv2.imread('../EyePictures/' + filename,0)
+    def __init__(self,filepath):
+        self.img = cv2.imread(filepath,0)
         self.ys,self.xs = self.img.shape[:2]
         self.width =1
         self.pupilRad = None
@@ -287,7 +290,9 @@ def expandLateral(myImg):
     '''This method will use the better walk to get the lists of one side of the
     eye with the other. It will then multuply the lists together to get an approximate of
     where a radius could be'''
-    print(getBaseline(myImg))
+    if not getBaseline(myImg):
+        raise BaselineError()
+    # print(getBaseline(myImg))
     irisRadRight,edgeRight = walkOneSideBetter(1,myImg)
     irisRadLeft,edgeLeft = walkOneSideBetter(-1,myImg)
     total = irisRadLeft * irisRadRight
