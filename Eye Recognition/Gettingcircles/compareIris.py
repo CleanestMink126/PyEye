@@ -112,35 +112,44 @@ if __name__ == "__main__":
     # a2 = np.random.normal(loc= -3,scale = 1, size = (5, 5))
     # db.findMostLikely(a2)
 
-    directory  = '../EyePictures/CASIA/'
+    directory  = '../EyePictures/Yichen/'
     subfolder = '1/'
     numEyes = 0
-    for filename in os.listdir(directory):
-        try:
-            personIndex = int(filename)
-            print(personIndex)
-            curr_subfolder = directory + filename+'/'+subfolder
-            for img_name in os.listdir(curr_subfolder):
-                try:
-                    print(img_name)
-                    if img_name.endswith(".bmp"):
-
-                        myImg = pupilDetection.getCircles(curr_subfolder + img_name)
-                        new_img = polarTransform.polarToCart(gray_img = myImg.img, center_x =myImg.center[1]
-                        ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad))
-                        new_img = polarTransform.polarToCart(gray_img = myImg.likelihood, center_x =myImg.center[1]
-                        ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad))
-                        new_img = polarTransform.polarToCart(gray_img = myImg.diff, center_x =myImg.center[1]
-                        ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad))
-
-                        # plt.imshow(new_img, cmap='gray')
-                        # plt.show()
-                        numEyes +=1
-                except pupilDetection.BaselineError:
-                    print('Baseline Error')
-                if numEyes > 10: break
-            if numEyes > 10: break
-        except ValueError:
-            continue
+    for i in range(3):
+        myImg = pupilDetection.displayImg(directory + str(i+1)+'.jpg')
+        new_img = polarTransform.polarToCart(gray_img = myImg.img, center_x =myImg.center[1]
+        ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad))
+        new_img = polarTransform.polarToCart(gray_img = myImg.likelihood, center_x =myImg.center[1]
+        ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad))
+        new_img = polarTransform.polarToCart(gray_img = myImg.threshold, center_x =myImg.center[1]
+        ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad))
+    #
+    # for filename in os.listdir(directory):
+    #     try:
+    #         personIndex = int(filename)
+    #         print(personIndex)
+    #         curr_subfolder = directory + filename+'/'+subfolder
+    #         for img_name in os.listdir(curr_subfolder):
+    #             try:
+    #                 print(img_name)
+    #                 if img_name.endswith(".bmp"):
+    #
+    #                     myImg = pupilDetection.getCircles(curr_subfolder + img_name)
+    #                     new_img = polarTransform.polarToCart(gray_img = myImg.img, center_x =myImg.center[1]
+    #                     ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad))
+    #                     new_img = polarTransform.polarToCart(gray_img = myImg.likelihood, center_x =myImg.center[1]
+    #                     ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad))
+    #                     new_img = polarTransform.polarToCart(gray_img = myImg.diff, center_x =myImg.center[1]
+    #                     ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad))
+    #
+    #                     # plt.imshow(new_img, cmap='gray')
+    #                     # plt.show()
+    #                     numEyes +=1
+    #             except pupilDetection.BaselineError:
+    #                 print('Baseline Error')
+    #             if numEyes > 10: break
+    #         if numEyes > 10: break
+    #     except ValueError:
+    #         continue
 
     # pupilDetection.getCircles()
