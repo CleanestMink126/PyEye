@@ -4,6 +4,10 @@ import polarTransform
 import pupilDetection
 import os
 import pupilDeps
+import cv2
+
+height = 80
+width = 120
 
 
 def analyzeList(mean_iris,iris_list, roll):
@@ -50,6 +54,9 @@ class indiv_iris:
         return z_score_me, z_score_other
 
 class iris_db:
+    height = height
+    widht = width
+
     def __init__(self, filename):
         self.person_list = []
         self.filename = filename
@@ -57,6 +64,7 @@ class iris_db:
         self.iris_list_tot_indices = None
         self.numPeople = 0
         self.roll = 5
+
 
     def add_person(self,info, iris_list):
         self.numPeople += 1
@@ -81,8 +89,35 @@ class iris_db:
         listValues = [(person.analyzeImage(irisImg),person.info.name) for person in self.person_list]
         print(listValues)
 
+    def addIris(self, curr_subfolder, ending, name):
+        iris_list = None
+        for img_name in os.listdir(curr_subfolder):
+            try:
+                print(img_name)
+                if img_name.endswith(ending):
+                    myImg = pupilDetection.getCircles(curr_subfolder + img_name)
+                    iris = polarTransform.polarToCart(gray_img = myImg.img, center_x =myImg.center[1]
+                    ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad), filterImg = True)
+                    threshold = polarTransform.polarToCart(gray_img = myImg.viablePixels, center_x =myImg.center[1]
+                    ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad))
+
+                    iris[threshold<=0.1] = np.nan
+                    # cv2.imshow('detected circles',iris/255)
+                    # cv2.waitKey(0)
+
+                    if iris_list is not None:
+                        iris_list = np.concatenate((iris_list,iris[np.newaxis,:]), axis = 0)
+                    else:
+                        iris_list = iris[np.newaxis,:]
 
 
+                    # plt.imshow(new_img, cmap='gray')
+                    # plt.show()
+                    # numEyes +=1
+            except pupilDetection.BaselineError:
+                print('Baseline Error')
+        person_info = info_class(name)
+        self.add_person(person_info,iris_list)
 
 if __name__ == "__main__":
     # db = iris_db("testFile")
@@ -112,44 +147,28 @@ if __name__ == "__main__":
     # a2 = np.random.normal(loc= -3,scale = 1, size = (5, 5))
     # db.findMostLikely(a2)
 
-    directory  = '../EyePictures/Yichen/'
+    # directory  = '../EyePictures/CASIA'
+    # subfolder = '1/'
+    # numEyes = 0
+    # for i in range(3):
+    #     myImg = pupilDetection.getCircles(directory + str(i+1)+'.jpg')
+    #     new_img = polarTransform.polarToCart(myImg.img, center_x =myImg.center[1]
+    #     ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad), filterImg = True)
+    #     new_img = polarTransform.polarToCart(myImg.likelihood, center_x =myImg.center[1]
+    #     ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad))
+    #     # new_img = polarTransform.polarToCart(gray_img = myImg.threshold, center_x =myImg.center[1]
+        # ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad))
+    directory  = '../EyePictures/CASIA/'
     subfolder = '1/'
-    numEyes = 0
-    for i in range(3):
-        myImg = pupilDetection.displayImg(directory + str(i+1)+'.jpg')
-        new_img = polarTransform.polarToCart(gray_img = myImg.img, center_x =myImg.center[1]
-        ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad))
-        new_img = polarTransform.polarToCart(gray_img = myImg.likelihood, center_x =myImg.center[1]
-        ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad))
-        new_img = polarTransform.polarToCart(gray_img = myImg.threshold, center_x =myImg.center[1]
-        ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad))
-    #
-    # for filename in os.listdir(directory):
-    #     try:
-    #         personIndex = int(filename)
-    #         print(personIndex)
-    #         curr_subfolder = directory + filename+'/'+subfolder
-    #         for img_name in os.listdir(curr_subfolder):
-    #             try:
-    #                 print(img_name)
-    #                 if img_name.endswith(".bmp"):
-    #
-    #                     myImg = pupilDetection.getCircles(curr_subfolder + img_name)
-    #                     new_img = polarTransform.polarToCart(gray_img = myImg.img, center_x =myImg.center[1]
-    #                     ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad))
-    #                     new_img = polarTransform.polarToCart(gray_img = myImg.likelihood, center_x =myImg.center[1]
-    #                     ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad))
-    #                     new_img = polarTransform.polarToCart(gray_img = myImg.diff, center_x =myImg.center[1]
-    #                     ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad))
-    #
-    #                     # plt.imshow(new_img, cmap='gray')
-    #                     # plt.show()
-    #                     numEyes +=1
-    #             except pupilDetection.BaselineError:
-    #                 print('Baseline Error')
-    #             if numEyes > 10: break
-    #         if numEyes > 10: break
-    #     except ValueError:
-    #         continue
+    db = iris_db('test.pkl')
+    for filename in os.listdir(directory):
+        try:
+            personIndex = int(filename)
+            print(personIndex)
+            curr_subfolder = directory + filename+'/'+subfolder
+            db.addIris(curr_subfolder, '.bmp', filename)
+            # if numEyes > 10: break
+        except ValueError:
+            continue
 
     # pupilDetection.getCircles()

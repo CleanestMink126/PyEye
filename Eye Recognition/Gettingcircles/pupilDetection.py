@@ -174,7 +174,7 @@ def getCircles(filename):
             break
 
     examineLikelihood(myImg, 100)
-    calculateDiff(myImg)
+    # calculateDiff(myImg)
     setViablePixels(myImg, 30)
 
     # cv2.circle(myImg.img,myImg.center,2,255,3)
