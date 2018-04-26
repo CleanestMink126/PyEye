@@ -124,12 +124,12 @@ def checkAlterantive(mask):
     mask = cv2.morphologyEx(mask, cv2.MORPH_GRADIENT, kernel)
     circles = cv2.HoughCircles(mask,cv2.HOUGH_GRADIENT,2,100,
                                 param1=80,param2=60)
-    print("Circles found")
+    # print("Circles found")
     return circles
 
 def displayLikelihood(myImg):
     irisLikelihoodVairable(myImg,size=[10,10] ,spacing=[2,2])
-    print("Examined likelihood")
+    # print("Examined likelihood")
     cv2.imshow('total likelihood',myImg.likelihood)
     cv2.waitKey(0)
     myImg.likelihood[:,:] = np.where(getMask(myImg),myImg.likelihood[:,:],0)
@@ -154,15 +154,15 @@ def getCircles(filename):
     kernel = np.ones((3,3),np.uint8)
     gray_filtered = cv2.inRange(img, 0, 60)
     mask = cv2.erode(gray_filtered,kernel,iterations = 1)
-    print("masks done")
+    # print("masks done")
 
     centerIsland = islandProblem(mask,myImg)
     myImg.center = int(centerIsland[0]),int(centerIsland[1])
-    print("island done")
+    # print("island done")
 
     circles = checkAlterantive(mask)
     left,total,right = expandLateral(myImg)
-    print("found edges")
+    # print("found edges")
 
     myImg.irisRad = int(myImg.edgeRight-myImg.center[0]) + np.argmax(total)
     if circles is not None:
@@ -170,7 +170,7 @@ def getCircles(filename):
             # draw the outer circle
             myImg.pupilRad+= i[2]
             myImg.pupilRad =int(myImg.pupilRad//2)
-            print("adjusted pupilRad")
+            # print("adjusted pupilRad")
             break
 
     examineLikelihood(myImg, 100)

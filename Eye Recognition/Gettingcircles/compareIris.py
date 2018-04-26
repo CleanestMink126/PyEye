@@ -87,7 +87,18 @@ class iris_db:
 
     def findMostLikely(self,irisImg):
         listValues = [(person.analyzeImage(irisImg),person.info.name) for person in self.person_list]
-        print(listValues)
+
+        calculations = np.zeros(len(listValues))
+        i = 0
+        for s,d in listValues:
+            if abs(s[0]) < abs(s[1]):
+                calculations[i] = 1
+            else:
+                calculations[i] = 0
+            i+=1
+        # print(listValues)
+        return calculations, listValues
+
 
     def addIris(self, curr_subfolder, ending, name):
         iris_list = None
@@ -95,15 +106,10 @@ class iris_db:
             try:
                 print(img_name)
                 if img_name.endswith(ending):
-                    myImg = pupilDetection.getCircles(curr_subfolder + img_name)
-                    iris = polarTransform.polarToCart(gray_img = myImg.img, center_x =myImg.center[1]
-                    ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad), filterImg = True)
-                    threshold = polarTransform.polarToCart(gray_img = myImg.viablePixels, center_x =myImg.center[1]
-                    ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad))
-
-                    iris[threshold<=0.1] = np.nan
                     # cv2.imshow('detected circles',iris/255)
                     # cv2.waitKey(0)
+                    print(curr_subfolder + img_name)
+                    iris = getIrisInfo(curr_subfolder + img_name)
 
                     if iris_list is not None:
                         iris_list = np.concatenate((iris_list,iris[np.newaxis,:]), axis = 0)
@@ -118,6 +124,16 @@ class iris_db:
                 print('Baseline Error')
         person_info = info_class(name)
         self.add_person(person_info,iris_list)
+
+def getIrisInfo(filepath):
+    myImg = pupilDetection.getCircles(filepath)
+    iris = polarTransform.polarToCart(gray_img = myImg.img, center_x =myImg.center[1]
+    ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad), filterImg = True)
+    threshold = polarTransform.polarToCart(gray_img = myImg.viablePixels, center_x =myImg.center[1]
+    ,center_y=myImg.center[0], radius = (myImg.pupilRad,myImg.irisRad))
+
+    iris[threshold<=0.1] = np.nan
+    return iris
 
 if __name__ == "__main__":
     # db = iris_db("testFile")
@@ -164,11 +180,26 @@ if __name__ == "__main__":
     for filename in os.listdir(directory):
         try:
             personIndex = int(filename)
+            if personIndex>5:
+                continue
             print(personIndex)
             curr_subfolder = directory + filename+'/'+subfolder
             db.addIris(curr_subfolder, '.bmp', filename)
             # if numEyes > 10: break
         except ValueError:
             continue
+    db.setComparison()
+    directory  = './../EyePictures/CASIA/001/1/001_1_1.bmp'
+    iris = getIrisInfo(directory)
+    print(db.findMostLikely(iris))
+    directory  = './../EyePictures/CASIA/002/1/002_1_1.bmp'
+    iris = getIrisInfo(directory)
+    print(db.findMostLikely(iris))
+    directory  = './../EyePictures/CASIA/003/1/003_1_1.bmp'
+    iris = getIrisInfo(directory)
+    print(db.findMostLikely(iris))
+
+    # subfolder = '1/'
+
 
     # pupilDetection.getCircles()

@@ -37,7 +37,7 @@ def polarToCart(gray_img, center_x=134, center_y=150, radius = (0,0),output_size
     #     img = cv2.imread(path)
     #     # gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    print(gray_img.shape)
+    # print(gray_img.shape)
 
     angle = 360
     width = gray_img.shape[0]
@@ -63,8 +63,8 @@ def polarToCart(gray_img, center_x=134, center_y=150, radius = (0,0),output_size
                 new_img[r-radius[0]][theta] = pixelValue
 
     # new_img = np.transpose(new_img)
-    print(new_img)
-    print(new_img.shape)
+    # print(new_img)
+    # print(new_img.shape)
     # cv2.imshow('detected circles',new_img/255)
     # cv2.waitKey(0)
 
@@ -99,10 +99,10 @@ def polarToCart(gray_img, center_x=134, center_y=150, radius = (0,0),output_size
         # plt.imshow(gray_img, cmap='gray')
         # plt.figure(2)
         # plt.imshow(new_img, cmap='gray')
-        cv2.imshow('detected circles',new_img/255)
-        cv2.waitKey(0)
-        cv2.imshow('detected circles',filtered_img/255)
-        cv2.waitKey(0)
+        # cv2.imshow('detected circles',new_img/255)
+        # cv2.waitKey(0)
+        # cv2.imshow('detected circles',filtered_img/255)
+        # cv2.waitKey(0)
         # cv2.imshow('detected circles',thresh_img/255)
         # cv2.waitKey(0)
         return filtered_img
