@@ -89,15 +89,18 @@ class iris_db:
         listValues = [(person.analyzeImage(irisImg),person.info.name) for person in self.person_list]
 
         calculations = np.zeros(len(listValues))
+        indexes = []
         i = 0
         for s,d in listValues:
             if abs(s[0]) < abs(s[1]):
                 calculations[i] = 1
             else:
                 calculations[i] = 0
+            indexes.append(d)
             i+=1
+
         # print(listValues)
-        return calculations, listValues
+        return calculations, indexes
 
 
     def addIris(self, curr_subfolder, ending, name):
@@ -136,32 +139,6 @@ def getIrisInfo(filepath):
     return iris
 
 if __name__ == "__main__":
-    # db = iris_db("testFile")
-    # a = np.random.normal(loc= 1,scale = 1, size = (40, 5, 5))
-    # b = np.random.normal(loc= -1,scale = 1, size = (40, 5, 5))
-    # c = np.random.normal(loc= 3,scale = 1, size = (40, 5, 5))
-    # d = np.random.normal(loc= -3,scale = 1, size = (40, 5, 5))
-    #
-    # db.add_person(info_class("a"),a)
-    # db.add_person(info_class("b"),b)
-    # db.add_person(info_class("c"),c)
-    # db.add_person(info_class("d"),d)
-    # db.setComparison()
-    # print('A2')
-    # a2 = np.random.normal(loc= 1,scale = 1, size = (5, 5))
-    # db.findMostLikely(a2)
-    #
-    # print('B2')
-    # a2 = np.random.normal(loc= -1,scale = 1, size = (5, 5))
-    # db.findMostLikely(a2)
-    #
-    # print('C2')
-    # a2 = np.random.normal(loc= 3,scale = 1, size = (5, 5))
-    # db.findMostLikely(a2)
-    #
-    # print('D2')
-    # a2 = np.random.normal(loc= -3,scale = 1, size = (5, 5))
-    # db.findMostLikely(a2)
 
     # directory  = '../EyePictures/CASIA'
     # subfolder = '1/'
@@ -180,26 +157,61 @@ if __name__ == "__main__":
     for filename in os.listdir(directory):
         try:
             personIndex = int(filename)
-            if personIndex>5:
-                continue
+            # if personIndex>30:
+            #     continue
             print(personIndex)
+
             curr_subfolder = directory + filename+'/'+subfolder
             db.addIris(curr_subfolder, '.bmp', filename)
             # if numEyes > 10: break
-        except ValueError:
+        except:
             continue
+
     db.setComparison()
-    directory  = './../EyePictures/CASIA/001/1/001_1_1.bmp'
-    iris = getIrisInfo(directory)
-    print(db.findMostLikely(iris))
-    directory  = './../EyePictures/CASIA/002/1/002_1_1.bmp'
-    iris = getIrisInfo(directory)
-    print(db.findMostLikely(iris))
-    directory  = './../EyePictures/CASIA/003/1/003_1_1.bmp'
-    iris = getIrisInfo(directory)
-    print(db.findMostLikely(iris))
+    truePositive = []
+    falsePositive = []
+
+    for filename in os.listdir(directory):
+        try:
+            personIndex = int(filename)
+            # if personIndex>30:
+            #     continue
+            print(personIndex)
+            curr_subfolder = directory + filename+'/'+subfolder
+            for img_name in os.listdir(curr_subfolder):
+                try:
+                    print(img_name)
+                    if img_name.endswith('.bmp'):
+                        # cv2.imshow('detected circles',iris/255)
+                        # cv2.waitKey(0)
+                        print(curr_subfolder + img_name)
+                        iris = getIrisInfo(curr_subfolder + img_name)
+                        calculations, indexes =db.findMostLikely(iris)
+                        trueIndex = indexes.index(filename)
+                        truePositive.append(calculations[trueIndex])
+                        # print(calculations[np.arange(len(calculations))!=trueIndex])
+                        # print(falsePositive)
+                        falsePositive =np.concatenate( [falsePositive,calculations[np.arange(len(calculations))!=trueIndex]])
+                        # plt.imshow(new_img, cmap='gray')
+                        # plt.show()
+                        # numEyes +=1
+                except pupilDetection.BaselineError:
+                    print('Baseline Error')
+            # if numEyes > 10: break
+        except:
+            continue
+    print(truePositive)
+    print(falsePositive)
+    truePositive = np.mean(truePositive)
+    trueNegative = 1 - np.mean(falsePositive)
+    print(truePositive)
+    print(trueNegative)
+
 
     # subfolder = '1/'
+
+
+    # pupilDetection.getCircles()
 
 
     # pupilDetection.getCircles()
