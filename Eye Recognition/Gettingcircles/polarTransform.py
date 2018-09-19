@@ -29,16 +29,6 @@ def polarToCart(gray_img, center_x=134, center_y=150, radius = (0,0),output_size
     and rectangles. x,y center and radius can be defined by the user
     if desired.
     '''
-    # if gray_img is not None:
-    #     pass
-    # else:
-    #     gray_img = cv2.imread(path,0)
-    # else:
-    #     img = cv2.imread(path)
-    #     # gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    # print(gray_img.shape)
-
     angle = 360
     width = gray_img.shape[0]
     widthTemp = gray_img.shape[1]
@@ -61,12 +51,6 @@ def polarToCart(gray_img, center_x=134, center_y=150, radius = (0,0),output_size
             if x>=0 and x<width and y>=0 and y<width:
                 pixelValue = gray_img[x][y]
                 new_img[r-radius[0]][theta] = pixelValue
-
-    # new_img = np.transpose(new_img)
-    # print(new_img)
-    # print(new_img.shape)
-    # cv2.imshow('detected circles',new_img/255)
-    # cv2.waitKey(0)
 
     new_img = cv2.resize(new_img, output_size, interpolation = cv2.INTER_LINEAR)
     # cv2.imshow('detected circles',new_img/255)
@@ -95,22 +79,7 @@ def polarToCart(gray_img, center_x=134, center_y=150, radius = (0,0),output_size
         filtered_img = process(new_img,filters) # https://cvtuts.wordpress.com/2014/04/27/gabor-filters-a-practical-overview/
         cvtscale_img = cv2.convertScaleAbs(filtered_img)
         ret, thresh_img= cv2.threshold(cvtscale_img, 127,255, cv2.THRESH_BINARY)
-        # plt.figure(1)
-        # plt.imshow(gray_img, cmap='gray')
-        # plt.figure(2)
-        # plt.imshow(new_img, cmap='gray')
-        # cv2.imshow('detected circles',new_img/255)
-        # cv2.waitKey(0)
-        # cv2.imshow('detected circles',filtered_img/255)
-        # cv2.waitKey(0)
-        # cv2.imshow('detected circles',thresh_img/255)
-        # cv2.waitKey(0)
         return filtered_img
-        # plt.figure(3)
-        # plt.imshow(filtered_img, cmap='gray')
-        # plt.figure(4)
-        # plt.imshow(thresh_img, cmap='gray')
-        # plt.show()
     return new_img
 
 if __name__ == "__main__":
