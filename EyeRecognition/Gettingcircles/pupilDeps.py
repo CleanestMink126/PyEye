@@ -3,12 +3,7 @@ import numpy as np
 import copy
 import matplotlib.pyplot as plt
 import cv2
-# def getBorderPixels(image, center, radius, thickness):
-#     '''The idea of this function is to return a set of tuples representing x,y
-#     coordinates of pixels along the circuference of a given circle'''
-#     passs
-# def getDataFromMask(mask):
-#     '''This might find the pupil given the mask'''
+
 class BaselineError():
     pass
 
@@ -28,10 +23,9 @@ class imageContainer:
         self.histogram = None
         self.likelihood=None
 
-
 def createMaxHeap(myImg,blur = 5):
     '''quickly get the heap of pixels from the image'''
-    if myImg.center is None:
+    if myImg.center is None: #try and get center if not present
         img2 = cv2.medianBlur(myImg.img,blur)
         kernel = np.ones((3,3),np.uint8)
         gray_filtered = cv2.inRange(img2, 0, 60)
@@ -59,34 +53,6 @@ def getdistanceNumpy(myImg):
     values = [(value, index)for index, value in np.ndenumerate(z)]
     heapq.heapify(values)
     myImg.valueHeap = values
-
-
-def walkOneSide(direction, myImg,historySize = 10,incrementSTD = 10, cutoff = 2.5):
-    '''After getting the baseline a.k.a. the brightest part of the iris, this method
-    will walk outwards horizontally toward the sclera, comparing the values before
-     current point with the current point. When the next point is above a certain
-     standard deviation away it will return the radius'''
-    history = []#this really should be a LL or QUEUE but makes np.mean hard
-    edge = myImg.xs+direction*myImg.maxRad
-    for i in range(historySize):
-        # print (edge - direction * i, center[1])
-        history.append(myImg.img[(int(myImg.ys),int(edge - direction * i))])
-    historyMean = np.mean(history)
-    std = np.std(history)
-
-    for i in range(0,int(min(myImg.xs, img.xs - myImg.xs)- myImg.maxRad)):
-        if not (i % incrementSTD):
-            std = np.std(history)
-        print history, "1"
-        print historyMean
-        new = float(myImg.img[(int(myImg.ys),int(edge + direction * i))])
-        # print new
-        if (new - historyMean)/std > cutoff:
-            return myImg.maxRad + i
-        old = float(history.pop(0))
-        history.append(new)
-        diff =float(new - old)
-        historyMean += diff / historySize
 
 def walkOneSideBetter(direction, myImg,historySize = 10,incrementSTD = 1, cutoff = 0.5):
     '''After getting the baseline a.k.a. the brightest part of the iris, this method
@@ -148,10 +114,6 @@ def getBaseline(myImg,width =3,saveTerritory = True):
         pixels = getNextBand(width, i, myImg.valueHeap)#get the pixels to be indexed in the image
         band = np.array([myImg.img[pix[1]] for pix in pixels])#get the values
         mean = np.mean(band)
-        # if i <1:
-        #     print(band)
-        # print(mean)
-
         if thres == None or mean < thres:
             thres = mean
         bandmin = np.min(band)
@@ -179,66 +141,6 @@ def getBaseline(myImg,width =3,saveTerritory = True):
 
     return False
 
-def getBaselineOld(filename, cutoff= 2,width =3):
-    '''DEPRECATED ---------------------------------------------'''
-    '''the goal of this function is to find the brightest band in the iris and use
-    that to inform about whether or not an individual pixel belongs to the iris'''
-    highestBand = []
-    highestMean = 0
-    history = [0]#this stores the previous 5 values, is a queue
-    dangaZone = False
-    '''we don't want to start looking for a max until we are in
-    iris territory so this will approximate when we reach that point'''
-    values, img, center = createMaxHeap(filename)
-    values2 = copy.deepcopy(values)
-    for i in range(0, width*40,width):
-        pixels = getNextBand(width, i, values)#get the pixels to be indexed in the image
-        band = [img[pix[1]] for pix in pixels]#get the values
-        mean = np.mean(band)
-        # print mean
-        hstmean = np.mean(history)
-        if (not dangaZone) and len(history)>3:
-            std = np.std(history)# this part is saying if the current mean is
-            #significantly above the past means (i.e. stuff went from black to less
-            #black)
-            if std != 0 and (mean - hstmean)/std > cutoff:
-                dangaZone = True
-                pupilRad = i
-
-        if dangaZone and mean > highestMean:
-            #after we know we are in iris territory, keep track of highest mean band
-            highestMean = mean
-            highestBand = band
-        elif dangaZone and mean < hstmean:
-            #if we get to the point where we are no longer increasing, return
-            return highestBand,i, pupilRad, values2, img, center
-
-        history.append(mean)
-        if len(history)>5:
-            history.pop(0)
-
-    print "never returned"
-    print dangaZone
-
-def examineBaselinePlot(filename):
-    '''DEPRECATED ----------------------------'''
-    '''this will plot the average pixel value as the radius expands from the
-    center of the pupil'''
-    highestBand,radius, pupilRad, values, img, center = getBaseline(filename)
-    mean = np.mean(highestBand)
-    std = np.std(highestBand)
-    history = []
-    for i in range(0, width*40,width):
-        pixels = getNextBand(width, i, values)
-        band =[img[pix[1]] for pix in pixels]
-        band = abs(band - mean)/std
-        history.append(np.mean(band))
-
-    plt.plot(history)#this will plot the average pixel value with each expansion
-    history = []
-    plt.show()
-
-
 def getNextBand(width, radius, heap):
     '''this function will return an appropriate amount of correct pixels given the
     current radius of a circle and the width of pixels to examine from there.
@@ -248,6 +150,9 @@ def getNextBand(width, radius, heap):
     return [heapq.heappop(heap) for i in range(int(numBoxes))]
 
 def islandProblem(mask,myImg):
+    '''Definitely Needs Improvement. This will assume the iris covers a middle pixel.
+    It will expand its range to find all black pixel values and estimate the center
+    of the pupil'''
     global mean
     global number
     global foundOne
@@ -262,8 +167,6 @@ def islandProblem(mask,myImg):
     foundOne = 1
     width = 1
     i = 0
-    # print(values)
-    # print(values[:100])
     def updateMean(newNum,maskVal):
         global mean
         global number
@@ -284,7 +187,6 @@ def islandProblem(mask,myImg):
 
     mean = mean[::-1]
     return mean
-
 
 def expandLateral(myImg):
     '''This method will use the better walk to get the lists of one side of the
