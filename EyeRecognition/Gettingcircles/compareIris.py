@@ -4,6 +4,7 @@ import polarTransform
 import pupilDetection
 import os
 import pupilDeps
+import compareDeps
 import cv2
 
 height = 80
@@ -137,6 +138,8 @@ def getIrisInfo(filepath):
 
     iris[threshold<=0.1] = np.nan
     return iris
+
+
 
 if __name__ == "__main__":
 
