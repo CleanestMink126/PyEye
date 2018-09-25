@@ -13,7 +13,7 @@ def convert_images():
         try:
             personIndex = int(filename)
             print(personIndex)
-            curr_subfolder = original_directory + filename+'/'+subfolder_train
+            curr_subfolder = original_directory + filename+'/'+subfolder_test
             for img_name in os.listdir(curr_subfolder):
                 try:
                     print(img_name)

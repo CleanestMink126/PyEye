@@ -5,15 +5,14 @@ import os
 
 
 SAVE_PATH = '/Models/IrisCompare/model.ckpt'
-SUMMARY_FILEPATH = './Models/SeaCliff/Summaries/'
-FILEPATH = './Data/CASIA/Training/'
-DATA_FILEPATH = FILEPATH + 'train/'
+SUMMARY_FILEPATH = '/Models/IrisCompare/Summaries/'
+FILEPATH = '/Data/EyePictures/Segmented/'
 TRAIN_LABEL_SAVE = FILEPATH + 'train_labels_fine'
 TRAIN_INPUT_SAVE = FILEPATH + 'train_images_fine'
 TEST_LABEL_SAVE = FILEPATH + 'test_labels_fine'
 TEST_INPUT_SAVE = FILEPATH + 'test_images_fine'
 ITERATIONS = 1000000
-CONVOLUTIONS = []
+CONVOLUTIONS = [-32, -64]
 IMAGE_SIZE = 128,128,2
 OUTPUT_SIZE = 1
 LEARNING_RATE = 1e-3
@@ -31,7 +30,7 @@ def decode_label(label):
 
 def return_datatset_train():
     images = tf.data.FixedLengthRecordDataset(
-      TRAIN_INPUT_SAVE, IMAGE_SIZE[0] * IMAGE_SIZE[1] * IMAGE_SIZE[2]).map(decode_image)
+      TRAIN_INPUT_SAVE, IMAGE_SIZE[0] * IMAGE_SIZE[1] * IMAGE_SIZE[2] * 4).map(decode_image)
     labels = tf.data.FixedLengthRecordDataset(
       TRAIN_LABEL_SAVE, 1).map(decode_label)
     return tf.data.Dataset.zip((images, labels))
@@ -67,7 +66,7 @@ def build_model(x, y):
     final_guess = tf.round(tf.sigmoid(logits))
     accuracy_summary = tf.summary.scalar('Accuracy',tf.reduce_mean(tf.cast(tf.equal(flat_labels, final_guess), tf.float32)))
     cross_entropy_summary = tf.summary.scalar('Cross Entropy', tf.reduce_mean(cross_entropy))
-        flat_labels = tf.cast(flat_labels, tf.float64)
+    flat_labels = tf.cast(flat_labels, tf.float64)
     final_guess = tf.cast(final_guess, tf.float64)
     TP = tf.count_nonzero(final_guess * y, dtype=tf.float32)
     TN = tf.count_nonzero((final_guess - 1) * (y - 1), dtype=tf.float32)
